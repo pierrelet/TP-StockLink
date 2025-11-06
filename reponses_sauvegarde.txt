@@ -1,0 +1,26 @@
+RÉPONSES AUX QUESTIONS DE SAUVEGARDE
+=====================================
+
+Question 1 : Quelle est la différence entre une sauvegarde complète et incrémentielle ?
+
+Réponse :
+Une sauvegarde complète copie toutes les données de la base à un moment donné. C'est plus long et prend plus de place, mais c'est complet. Une sauvegarde incrémentielle ne sauvegarde que ce qui a changé depuis la dernière sauvegarde (complète ou incrémentielle). C'est plus rapide et prend moins de place, mais pour restaurer il faut la dernière sauvegarde complète plus toutes les incrémentielles depuis. En général on fait une complète par jour et des incrémentielles toutes les heures.
+
+Question 2 : Quelle fréquence de sauvegarde recommanderiez-vous pour un entrepôt actif quotidiennement ?
+
+Réponse :
+Pour un entrepôt actif quotidiennement, je recommanderais une sauvegarde complète tous les jours (la nuit quand c'est moins chargé) et des sauvegardes incrémentielles toutes les 2-4 heures pendant la journée. Comme ça si quelque chose se passe mal, on perd au maximum quelques heures de données. Et je garderais les sauvegardes complètes pendant au moins une semaine, au cas où.
+
+Question 3 : Citez un outil ou une commande permettant de sauvegarder une base PostgreSQL.
+
+Réponse :
+Pour PostgreSQL, on utilise la commande `pg_dump`. Par exemple :
+```bash
+pg_dump -U postgres -F c -b -v -f backup_stocklink_$(date +%Y%m%d_%H%M%S).dump stocklink
+```
+Le `-F c` fait un format custom compressé, `-b` inclut les blobs, `-v` pour verbose. On peut aussi utiliser `pg_dumpall` pour sauvegarder toutes les bases d'un coup, ou configurer le WAL archiving pour des sauvegardes continues.
+
+Question 4 : Quelles bonnes pratiques permettent d'assurer une récupération rapide après sinistre (panne, suppression accidentelle, corruption) ?
+
+Réponse :
+Pour récupérer vite après un sinistre, il faut d'abord avoir des sauvegardes récentes et testées régulièrement (genre une fois par mois on teste qu'on peut bien restaurer). Ensuite, avoir une réplication en streaming vers un serveur secondaire permet de basculer rapidement si le premier plante. Il faut aussi documenter clairement la procédure de restauration et l'avoir testée, sinon on perd du temps à chercher comment faire. Enfin, avoir les sauvegardes sur un stockage distant (pas juste sur le même serveur) et les automatiser pour pas oublier. Et pour MongoDB, utiliser l'oplog permet de faire du point-in-time recovery précis.
