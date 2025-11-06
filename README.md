@@ -1,14 +1,24 @@
-# StockLink Core - API Back-End
+# StockLink Pro - API Sécurisée et Documentée
 
-API Back-End pour la gestion d'entrepôts StockLink, développée avec Node.js, TypeScript, PostgreSQL et MongoDB.
+API Back-End professionnelle pour la gestion d'entrepôts StockLink, développée avec Node.js, TypeScript, PostgreSQL et MongoDB.
 
 ## Description
 
-StockLink Core est une API REST permettant de gérer :
+StockLink Pro est une API REST sécurisée permettant de gérer :
+- Les utilisateurs et l'authentification (JWT)
 - Les entrepôts (warehouses)
 - Les produits stockés (products)
 - Les mouvements de stock (movements)
 - La structure interne des entrepôts (locations) avec zones, allées, niveaux et bacs
+
+## Fonctionnalités de sécurité
+
+- **Authentification JWT** : Système complet d'authentification avec tokens JWT
+- **Autorisation par rôles** : Contrôle d'accès basé sur les rôles (user/admin)
+- **CORS** : Protection contre les requêtes cross-origin non autorisées
+- **Rate Limiting** : Limitation à 100 requêtes / 15 minutes par IP
+- **Validation des données** : Validation automatique des entrées avec express-validator
+- **Documentation Swagger** : Documentation interactive disponible sur `/docs`
 
 ## Architecture
 
@@ -16,13 +26,17 @@ Le projet suit une architecture **MVC** (Model-View-Controller) :
 
 ```
 src/
-├── config/          # Configuration des bases de données
+├── config/          # Configuration des bases de données et Swagger
 ├── controllers/     # Logique métier et gestion des requêtes
 ├── models/          # Modèles de données (PostgreSQL et MongoDB)
 ├── routes/          # Définition des routes API
+├── middlewares/     # Middlewares d'authentification et validation
 ├── types/           # Définitions TypeScript
 ├── app.ts           # Configuration Express
 └── server.ts        # Point d'entrée du serveur
+tests/
+├── unit/            # Tests unitaires
+└── integration/     # Tests d'intégration
 ```
 
 ## Installation
@@ -52,7 +66,7 @@ src/
    
    Modifiez les valeurs selon votre configuration :
    ```env
-   PORT=3000
+   PORT=3001
    POSTGRES_HOST=localhost
    POSTGRES_PORT=5432
    POSTGRES_DB=stocklink
@@ -60,6 +74,12 @@ src/
    POSTGRES_PASSWORD=postgres
    MONGODB_URI=mongodb://localhost:27017
    MONGODB_DB=stocklink
+   JWT_SECRET=6f50aacf5266fd507764b51f7b0cd331365ad057e82d6f12fe2ffcccfa1257a7
+   ```
+   
+   **Important** : Pour générer une nouvelle clé JWT secrète, utilisez :
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
 4. **Initialiser la base de données PostgreSQL**
@@ -102,103 +122,140 @@ npm run build
 npm start
 ```
 
-Le serveur sera accessible sur `http://localhost:3000` (ou le port configuré dans `.env`).
+Le serveur sera accessible sur `http://localhost:3001` (ou le port configuré dans `.env`).
 
-## Routes API
+## Documentation Swagger
+
+La documentation interactive de l'API est disponible sur :
+**http://localhost:3001/docs**
+
+Vous pouvez y tester toutes les routes directement depuis l'interface Swagger.
+
+## Authentification
+
+### Inscription
+```bash
+POST /auth/register
+Content-Type: application/json
+
+{
+  "username": "john_doe",
+  "password": "password123",
+  "role": "user"  // optionnel, par défaut "user"
+}
+```
+
+### Connexion
+```bash
+POST /auth/login
+Content-Type: application/json
+
+{
+  "username": "john_doe",
+  "password": "password123"
+}
+```
+
+Réponse :
+```json
+{
+  "message": "Connexion réussie",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "john_doe",
+    "role": "user"
+  }
+}
+```
+
+### Utilisation du token
+
+Pour les routes protégées, incluez le token dans l'en-tête `Authorization` :
+```
+Authorization: Bearer <votre_token>
+```
+
+## Routes API et Protection
+
+### Authentification
+
+| Méthode | Endpoint | Description | Protection |
+|---------|----------|-------------|------------|
+| POST | `/auth/register` | Crée un nouvel utilisateur | Libre |
+| POST | `/auth/login` | Connexion et obtention du token JWT | Libre |
 
 ### Produits
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/products` | Liste tous les produits |
-| POST | `/products` | Ajoute un produit |
-| PUT | `/products/:id` | Met à jour un produit |
-| DELETE | `/products/:id` | Supprime un produit |
+| Méthode | Endpoint | Description | Protection |
+|---------|----------|-------------|------------|
+| GET | `/products` | Liste tous les produits | **Libre** |
+| POST | `/products` | Crée un nouveau produit | **Authentifié** |
+| PUT | `/products/:id` | Met à jour un produit | **Authentifié** |
+| DELETE | `/products/:id` | Supprime un produit | **Admin uniquement** |
 
-**Exemple de création de produit :**
-```json
-POST /products
-{
-  "name": "Ordinateur portable",
-  "reference": "LAPTOP-001",
-  "quantity": 10,
-  "warehouse_id": 1
-}
+### Mouvements
+
+| Méthode | Endpoint | Description | Protection |
+|---------|----------|-------------|------------|
+| GET | `/movements` | Liste l'historique des mouvements | **Libre** |
+| POST | `/movements` | Enregistre un mouvement et met à jour le stock | **Authentifié** |
+
+### Entrepôts
+
+| Méthode | Endpoint | Description | Protection |
+|---------|----------|-------------|------------|
+| GET | `/warehouses` | Liste tous les entrepôts | **Libre** |
+| POST | `/warehouses` | Crée un nouvel entrepôt | **Authentifié** |
+
+### Locations
+
+| Méthode | Endpoint | Description | Protection |
+|---------|----------|-------------|------------|
+| GET | `/warehouses/:id/locations` | Récupère la structure d'un entrepôt | **Libre** |
+| POST | `/warehouses/:id/locations` | Crée la structure interne d'un entrepôt | **Authentifié** |
+| PUT | `/warehouses/:id/locations` | Met à jour la structure interne | **Authentifié** |
+| GET | `/locations/:binCode/exists` | Vérifie si un bac existe | Libre |
+
+## Tests
+
+### Lancer tous les tests
+```bash
+npm test
 ```
 
-### Mouvements de stock
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/movements` | Liste l'historique des mouvements |
-| POST | `/movements` | Enregistre un mouvement et met à jour le stock |
-
-**Exemple de création de mouvement :**
-```json
-POST /movements
-{
-  "product_id": 1,
-  "quantity": 5,
-  "type": "IN"
-}
+### Lancer les tests en mode watch
+```bash
+npm run test:watch
 ```
 
-Types de mouvement : `"IN"` (entrée) ou `"OUT"` (sortie)
-
-### Locations (Structure interne des entrepôts)
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/warehouses/:id/locations` | Récupère la structure MongoDB d'un entrepôt |
-| POST | `/warehouses/:id/locations` | Crée la structure interne d'un entrepôt |
-| PUT | `/warehouses/:id/locations` | Met à jour la structure interne d'un entrepôt |
-| GET | `/locations/:binCode/exists?warehouse_id=:id` | Vérifie si un bac existe |
-
-**Exemple de structure de location :**
-```json
-POST /warehouses/1/locations
-{
-  "zones": [
-    {
-      "name": "Zone A",
-      "rows": [
-        {
-          "name": "R1",
-          "levels": [
-            {
-              "name": "L1",
-              "bins": [
-                {
-                  "code": "A1-R1-L1-B01"
-                },
-                {
-                  "code": "A1-R1-L1-B02"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+### Lancer les tests avec couverture
+```bash
+npm run test:coverage
 ```
 
-**Exemple de vérification de bac :**
-```
-GET /locations/A1-R1-L1-B01/exists?warehouse_id=1
-```
+### Tests inclus
 
-### Santé de l'API
+**Tests unitaires** (3 tests minimum) :
+- Mise à jour du stock après mouvement IN
+- Mise à jour du stock après mouvement OUT
+- Vérification du stock insuffisant
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/health` | Vérifie l'état de l'API |
-| GET | `/health/db` | Vérifie les connexions aux bases de données |
+**Tests d'intégration** (1 test minimum) :
+- Test de la route `/auth/login`
+- Test de création de produit avec authentification
+- Test de suppression avec contrôle d'accès admin
 
 ## Structure des bases de données
 
 ### PostgreSQL
+
+#### Table `users`
+- `id` (SERIAL PRIMARY KEY)
+- `username` (VARCHAR(50) UNIQUE)
+- `password` (VARCHAR(255)) - haché avec bcrypt
+- `role` (VARCHAR(10)) - 'user' ou 'admin'
+- `created_at` (TIMESTAMP)
 
 #### Table `warehouses`
 - `id` (SERIAL PRIMARY KEY)
@@ -235,6 +292,21 @@ Structure hiérarchique :
         - `product_id` (Number, optionnel) : Produit stocké
         - `quantity` (Number, optionnel) : Quantité dans le bac
 
+## Sécurité
+
+### CORS
+- Origine autorisée : `http://localhost:3000`
+- Credentials : activés
+
+### Rate Limiting
+- Limite : 100 requêtes par IP
+- Fenêtre : 15 minutes
+
+### Validation
+- Toutes les routes POST/PUT sont validées avec `express-validator`
+- Les mots de passe sont hachés avec `bcrypt` (10 rounds)
+- Les tokens JWT expirent après 24 heures
+
 ## Technologies utilisées
 
 - **Node.js** : Runtime JavaScript
@@ -242,16 +314,22 @@ Structure hiérarchique :
 - **Express** : Framework web
 - **PostgreSQL** : Base de données relationnelle
 - **MongoDB** : Base de données NoSQL
-- **pg** : Client PostgreSQL pour Node.js
-- **mongodb** : Driver MongoDB officiel
+- **JWT** : Authentification par tokens
+- **bcrypt** : Hachage des mots de passe
+- **Swagger/OpenAPI** : Documentation interactive
+- **Jest** : Framework de tests
+- **express-validator** : Validation des données
+- **express-rate-limit** : Limitation du taux de requêtes
 
 ## Notes importantes
 
+- Les mots de passe sont hachés avec bcrypt avant stockage
+- Les tokens JWT contiennent : id, username et role
+- La clé secrète JWT doit être changée en production
 - Les mouvements de type "OUT" vérifient automatiquement que le stock est suffisant
 - La suppression d'un entrepôt supprime également tous ses produits (CASCADE)
 - La suppression d'un produit supprime également tous ses mouvements (CASCADE)
 - Les références de produits doivent être uniques
-- Les quantités de mouvement doivent être strictement positives
 
 ## Dépannage
 
@@ -259,10 +337,20 @@ Structure hiérarchique :
 - Vérifiez que PostgreSQL est démarré
 - Vérifiez les identifiants dans `.env`
 - Vérifiez que la base de données `stocklink` existe
+- Vérifiez que la table `users` existe (exécutez `init_pgadmin.sql`)
 
 ### Erreur de connexion MongoDB
 - Vérifiez que MongoDB est démarré
 - Vérifiez l'URI MongoDB dans `.env`
+
+### Erreur d'authentification
+- Vérifiez que le token JWT est valide et non expiré
+- Vérifiez que le header `Authorization: Bearer <token>` est correct
+- Vérifiez que `JWT_SECRET` dans `.env` correspond à celui utilisé pour générer le token
+
+### Erreur 403 (Forbidden)
+- Vérifiez que votre utilisateur a le rôle `admin` pour les routes admin uniquement
+- Vérifiez que le token contient bien le bon rôle
 
 ### Erreur de compilation TypeScript
 - Vérifiez que toutes les dépendances sont installées : `npm install`
@@ -271,5 +359,3 @@ Structure hiérarchique :
 ## Licence
 
 ISC
-
-

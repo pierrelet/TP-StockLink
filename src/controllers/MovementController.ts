@@ -9,8 +9,8 @@ export class MovementController {
       const movements = await MovementModel.findAll();
       res.status(200).json(movements);
     } catch (error) {
-      console.error('Erreur lors de la récupération des mouvements:', error);
-      res.status(500).json({ error: 'Erreur serveur lors de la récupération des mouvements' });
+      console.error('Erreur mouvements:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
     }
   }
 
@@ -19,17 +19,17 @@ export class MovementController {
       const data: MovementCreate = req.body;
 
       if (!data.product_id || !data.quantity || !data.type) {
-        res.status(400).json({ error: 'Les champs product_id, quantity et type sont requis' });
+        res.status(400).json({ error: 'Champs requis manquants' });
         return;
       }
 
       if (data.type !== 'IN' && data.type !== 'OUT') {
-        res.status(400).json({ error: 'Le type doit être "IN" ou "OUT"' });
+        res.status(400).json({ error: 'Type invalide' });
         return;
       }
 
       if (data.quantity <= 0) {
-        res.status(400).json({ error: 'La quantité doit être supérieure à 0' });
+        res.status(400).json({ error: 'Quantité invalide' });
         return;
       }
 
@@ -41,12 +41,11 @@ export class MovementController {
 
       if (data.type === 'OUT' && product.quantity < data.quantity) {
         res.status(400).json({ 
-          error: `Stock insuffisant. Stock actuel: ${product.quantity}, quantité demandée: ${data.quantity}` 
+          error: `Stock insuffisant: ${product.quantity} disponible` 
         });
         return;
       }
 
-      // Mise à jour automatique du stock après création du mouvement
       const newQuantity = data.type === 'IN' 
         ? product.quantity + data.quantity 
         : product.quantity - data.quantity;
@@ -59,9 +58,8 @@ export class MovementController {
         product: await ProductModel.findById(data.product_id),
       });
     } catch (error) {
-      console.error('Erreur lors de la création du mouvement:', error);
-      res.status(500).json({ error: 'Erreur serveur lors de la création du mouvement' });
+      console.error('Erreur création mouvement:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
     }
   }
 }
-

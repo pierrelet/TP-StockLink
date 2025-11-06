@@ -78,4 +78,38 @@ export interface Bin {
   quantity?: number;
 }
 
+// Types pour les utilisateurs
+export interface User {
+  id: number;
+  username: string;
+  password: string;
+  role: 'user' | 'admin';
+}
+
+export interface UserCreate {
+  username: string;
+  password: string;
+  role?: 'user' | 'admin';
+}
+
+export interface UserLogin {
+  username: string;
+  password: string;
+}
+
+export interface JWTPayload {
+  id: number;
+  username: string;
+  role: 'user' | 'admin';
+}
+
+// Extension de Request pour inclure user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JWTPayload;
+    }
+  }
+}
+
 

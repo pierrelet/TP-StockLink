@@ -8,8 +8,8 @@ export class ProductController {
       const products = await ProductModel.findAll();
       res.status(200).json(products);
     } catch (error) {
-      console.error('Erreur lors de la récupération des produits:', error);
-      res.status(500).json({ error: 'Erreur serveur lors de la récupération des produits' });
+      console.error('Erreur produits:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
     }
   }
 
@@ -18,18 +18,18 @@ export class ProductController {
       const data: ProductCreate = req.body;
       
       if (!data.name || !data.reference || !data.warehouse_id) {
-        res.status(400).json({ error: 'Les champs name, reference et warehouse_id sont requis' });
+        res.status(400).json({ error: 'Champs requis manquants' });
         return;
       }
 
       const product = await ProductModel.create(data);
       res.status(201).json(product);
     } catch (error: any) {
-      console.error('Erreur lors de la création du produit:', error);
+      console.error('Erreur création:', error);
       if (error.code === '23505') {
-        res.status(409).json({ error: 'Une référence de produit existe déjà' });
+        res.status(409).json({ error: 'Référence déjà existante' });
       } else {
-        res.status(500).json({ error: 'Erreur serveur lors de la création du produit' });
+        res.status(500).json({ error: 'Erreur serveur' });
       }
     }
   }
@@ -52,11 +52,11 @@ export class ProductController {
 
       res.status(200).json(product);
     } catch (error: any) {
-      console.error('Erreur lors de la mise à jour du produit:', error);
+      console.error('Erreur update:', error);
       if (error.code === '23505') {
-        res.status(409).json({ error: 'Une référence de produit existe déjà' });
+        res.status(409).json({ error: 'Référence déjà existante' });
       } else {
-        res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du produit' });
+        res.status(500).json({ error: 'Erreur serveur' });
       }
     }
   }
@@ -78,9 +78,8 @@ export class ProductController {
 
       res.status(204).send();
     } catch (error) {
-      console.error('Erreur lors de la suppression du produit:', error);
-      res.status(500).json({ error: 'Erreur serveur lors de la suppression du produit' });
+      console.error('Erreur suppression:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
     }
   }
 }
-

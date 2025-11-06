@@ -10,6 +10,7 @@ export const pgPool = new Pool({
   database: process.env.POSTGRES_DB || 'stocklink',
   user: process.env.POSTGRES_USER || 'postgres',
   password: process.env.POSTGRES_PASSWORD || 'postgres',
+  connectionTimeoutMillis: 5000,
 });
 
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
@@ -24,12 +25,15 @@ export async function connectMongoDB(): Promise<Db> {
   }
 
   try {
-    mongoClient = new MongoClient(mongoUri);
+    mongoClient = new MongoClient(mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+    });
     await mongoClient.connect();
     mongoDb = mongoClient.db(mongoDbName);
     return mongoDb;
   } catch (error) {
-    console.error('Erreur de connexion MongoDB:', error);
+    console.error('Erreur MongoDB:', error);
     throw error;
   }
 }
@@ -46,7 +50,7 @@ export async function testPostgreSQL(): Promise<void> {
   try {
     await pgPool.query('SELECT NOW()');
   } catch (error) {
-    console.error('Erreur de connexion PostgreSQL:', error);
+    console.error('Erreur PostgreSQL:', error);
     throw error;
   }
 }
